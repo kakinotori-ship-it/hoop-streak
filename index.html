@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#b8a6e8">
+<title>Hoop Streak</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--bg:#f8f6fc;--card:#fff;--text:#34313d;--muted:#8b8795;--accent:#9b86d8;--accent2:#d8cff4;--green:#8bc6a2}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif}
+.app{max-width:520px;margin:auto;padding:20px 16px 90px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+h1{font-size:25px;margin:0}.streak{background:#fff;border-radius:18px;padding:10px 14px;font-weight:700;box-shadow:0 3px 15px #00000008}
+.card{background:var(--card);border-radius:24px;padding:20px;margin:12px 0;box-shadow:0 5px 22px #00000008}
+.hero{text-align:center;background:linear-gradient(145deg,#eee9fb,#fff)}
+.flame{font-size:46px}.big{font-size:42px;font-weight:800;margin:2px 0}
+button{border:0;border-radius:16px;padding:13px 17px;background:var(--accent);color:white;font-size:16px;font-weight:700;cursor:pointer}
+button.secondary{background:#eeeaf7;color:#5f527e}.row{display:flex;gap:10px;align-items:center}.row>*{flex:1}
+input{width:100%;padding:13px;border:1px solid #e6e2ed;border-radius:14px;font-size:16px}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;justify-content:center;gap:8px;padding:10px max(10px,env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px #0000000b;z-index:5}
+.tabs button{background:transparent;color:var(--muted);font-size:12px;padding:8px 13px}.tabs button.active{color:var(--accent)}
+.page{display:none}.page.active{display:block}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.dow{font-size:11px;text-align:center;color:var(--muted);padding-bottom:3px}.day{min-height:52px;border-radius:13px;background:#faf9fc;text-align:center;padding:6px 2px;font-size:12px;position:relative}.day .dot{display:block;margin:4px auto 0;width:22px;height:22px;border-radius:50%;background:#e7e3ee}.day.done .dot{background:var(--green);color:white}.day.today{outline:2px solid var(--accent)}.mins{font-size:9px;color:#6e6879}
+canvas{width:100%;height:210px}
+.badges{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.badge{padding:14px;border-radius:18px;background:#f5f2fb}.badge.lock{opacity:.45}
+small,.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h1>🌀 Hoop Streak</h1><div class="streak">🔥 <span id="streak">0</span>日</div></header>
+
+<section id="home" class="page active">
+<div class="card hero"><div class="flame">🔥</div><div class="big" id="todayMin">0</div><div>今日のフラフープ（分）</div><br><button onclick="addSession()">＋ 記録を追加</button></div>
+<div class="card"><b>🎯 今日の目標</b><p><span id="goalNow">0</span> / <span id="goal">20</span> 分</p><div style="height:12px;background:#eeeaf5;border-radius:99px"><div id="progress" style="height:100%;width:0%;background:var(--accent);border-radius:99px"></div></div></div>
+<div class="card"><b>📊 今月</b><p>合計 <strong id="monthMin">0</strong> 分　・　運動日 <strong id="monthDays">0</strong> 日</p></div>
+</section>
+
+<section id="calendar" class="page">
+<div class="card"><div class="row"><button class="secondary" onclick="changeMonth(-1)">‹</button><h2 id="monthTitle" style="text-align:center;margin:0"></h2><button class="secondary" onclick="changeMonth(1)">›</button></div><br><div class="calendar" id="cal"></div></div>
+</section>
+
+<section id="weight" class="page">
+<div class="card"><h2>⚖️ 体重</h2><div class="row"><input id="weightInput" type="number" step="0.1" placeholder="kg"><button onclick="saveWeight()">記録</button></div><p class="muted">最新：<strong id="latestWeight">--</strong> kg</p><canvas id="chart" width="700" height="350"></canvas><div style="margin-top:18px"><h3 style="margin:0 0 10px">📋 体重の記録</h3><div id="weightList"></div></div></div>
+</section>
+
+<section id="badges" class="page">
+<div class="card"><h2>🏆 ストリーク＆実績</h2><p>最高連続：<strong id="best">0</strong>日　／　累計：<strong id="total">0</strong>分</p><div class="badges" id="badgeList"></div></div>
+</section>
+
+<section id="settings" class="page">
+<div class="card"><h2>⚙️ 設定</h2><label>1日の目標（分）</label><br><br><div class="row"><input id="goalInput" type="number" min="1"><button onclick="saveGoal()">保存</button></div><hr style="border:0;border-top:1px solid #eee;margin:22px 0"><p><b>🔔 リマインダー</b></p><p class="muted">iPhoneのホーム画面に追加して使うと、通知機能を拡張できます。現在の版では、記録を促すための設定欄を用意しています。</p><button class="secondary" onclick="exportData()">データを書き出す</button></div>
+</section>
+</div>
+
+<nav class="tabs">
+<button onclick="show('home')" id="t-home">🏠<br>ホーム</button>
+<button onclick="show('calendar')" id="t-calendar">📅<br>カレンダー</button>
+<button onclick="show('weight')" id="t-weight">⚖️<br>体重</button>
+<button onclick="show('badges')" id="t-badges">🏆<br>実績</button>
+<button onclick="show('settings')" id="t-settings">⚙️<br>設定</button>
+</nav>
+
+<script>
+const KEY='hoopStreakV1';
+let data=JSON.parse(localStorage.getItem(KEY)||'{"sessions":{},"weights":{},"goal":20}');
+let view=new Date();
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function addSession(){
+ const d=new Date(), k=key(d);
+ const v=prompt('フラフープを何分しましたか？','10');
+ if(v===null)return; const m=Number(v); if(!Number.isFinite(m)||m<=0)return alert('1分以上の数字を入力してね。');
+ data.sessions[k]=(data.sessions[k]||0)+m; save(); render();
+}
+function saveWeight(){const v=Number(weightInput.value);if(v>0){data.weights[key(new Date())]=v;weightInput.value='';save();render()}}
+function saveGoal(){const v=Number(goalInput.value);if(v>0){data.goal=v;save();render()}}
+function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='hoop-streak-data.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function show(id){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));document.getElementById('t-'+id).classList.add('active');render()}
+function calcStreak(){let d=new Date();let s=0;while(data.sessions[key(d)]>0){s++;d.setDate(d.getDate()-1)}return s}
+function bestStreak(){let ks=Object.keys(data.sessions).filter(k=>data.sessions[k]>0).sort(),best=0,cur=0,prev=null;for(const k of ks){const d=new Date(k+'T12:00:00');if(prev){const diff=(d-prev)/86400000;if(diff!==1)cur=0}cur++;best=Math.max(best,cur);prev=d}return best}
+function renderCalendar(){
+ const y=view.getFullYear(),m=view.getMonth(); monthTitle.textContent=`${y}年${m+1}月`;cal.innerHTML=['日','月','火','水','木','金','土'].map(x=>`<div class="dow">${x}</div>`).join('');
+ const first=new Date(y,m,1).getDay(), last=new Date(y,m+1,0).getDate();for(let i=0;i<first;i++)cal.innerHTML+='<div></div>';
+ for(let n=1;n<=last;n++){const d=new Date(y,m,n),k=key(d),mins=data.sessions[k]||0;cal.innerHTML+=`<div class="day ${mins?'done':''} ${k===key(new Date())?'today':''}" onclick="alert('${y}/${m+1}/${n}\\nフラフープ：${mins}分')">${n}<span class="dot">${mins?'✓':''}</span>${mins?`<span class="mins">${mins}分</span>`:''}</div>`}
+}
+function changeMonth(n){view.setMonth(view.getMonth()+n);renderCalendar()}
+function drawChart(){
+ const c=document.getElementById('chart'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);const arr=Object.entries(data.weights).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30);if(!arr.length){ctx.font='28px sans-serif';ctx.fillText('体重を記録するとグラフが出ます',35,175);return}
+ const vals=arr.map(x=>x[1]),min=Math.min(...vals)-1,max=Math.max(...vals)+1;ctx.beginPath();vals.forEach((v,i)=>{const x=35+i*(630/Math.max(1,vals.length-1)),y=310-(v-min)/(max-min)*250;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.font='20px sans-serif';ctx.fillText(`${vals[vals.length-1]} kg`,35,30)
+}
+function renderWeightList(){
+ const list=document.getElementById('weightList');
+ const arr=Object.entries(data.weights).sort((a,b)=>b[0].localeCompare(a[0]));
+ if(!arr.length){list.innerHTML='<p class="muted" style="margin:0">まだ体重の記録がありません。</p>';return}
+ list.innerHTML=arr.map(([k,v])=>{
+   const [y,m,d]=k.split('-');
+   return `<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-top:1px solid #eee"><span>${y}/${Number(m)}/${Number(d)}</span><strong style="font-size:18px">${v} kg</strong></div>`;
+ }).join('');
+}
+
+function render(){
+ const today=data.sessions[key(new Date())]||0;todayMin.textContent=today;goal.textContent=data.goal;goalNow.textContent=today;progress.style.width=Math.min(100,today/data.goal*100)+'%';
+ streak.textContent=calcStreak();best.textContent=bestStreak();total.textContent=Object.values(data.sessions).reduce((a,b)=>a+b,0);
+ const now=new Date();const pref=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;const ms=Object.entries(data.sessions).filter(([k,v])=>k.startsWith(pref));monthMin.textContent=ms.reduce((a,[k,v])=>a+v,0);monthDays.textContent=ms.filter(([k,v])=>v>0).length;goalInput.value=data.goal;
+ const ws=Object.entries(data.weights).sort((a,b)=>a[0].localeCompare(b[0]));latestWeight.textContent=ws.length?ws.at(-1)[1]:'--';drawChart();renderWeightList();renderCalendar();
+ const b=[7,14,30,50,100].map(n=>`<div class="badge ${bestStreak()<n?'lock':''}">${bestStreak()>=n?'🏆':'🔒'} <b>${n}日連続</b><br><small>${bestStreak()>=n?'達成！':'あと '+(n-bestStreak())+'日'}</small></div>`).join('');badgeList.innerHTML=b;
+}
+render();show('home');
+</script>
+</body></html>
